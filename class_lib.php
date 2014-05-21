@@ -1,9 +1,9 @@
 <?php
 
 class apiServer{
+	const REQUESTLIFETIME = 180; //The request mustn't be more than REQUESTLIFETIME seconds old
 	public $errno;
 	public $errmsg;
-	public $errverbose;
 	
 	private $method;
 	private $uri;
@@ -11,27 +11,28 @@ class apiServer{
 	private $rawData;
 	private $privateKey;
 	
-	
-	function __construct($pKey) 
+	function __construct() 
 	{	
-		$this->privateKey=$pKey;
 		$this->method=$this->getMethod();
 		$this->uri=$_SERVER['REQUEST_URI'];
 		$this->headerHttp=array_change_key_case(getallheaders(),CASE_LOWER);
 		$this->rawData=@file_get_contents('php://input');
+	}
+
+	function setPrivateKey($pKey) 
+	{	
+		$this->privateKey=$pKey;
 	}
 		
 	function isValid()
 	{
 		if ($this->getSignature() != $this->buildSignature()){
 			$this->errno="401";
-			$this->errmsg="Unauthorized";
-			$this->errverbose="signature doesn't match";
+			$this->errmsg="signature doesn't match";
 			return False;
-		}elseif(strtotime("now")-strtotime($this->getDateTime()) > 60*60 ){
+		}elseif(strtotime("now")-strtotime($this->getDateTime()) > apiserver::REQUESTLIFETIME ){
 			$this->errno="403";
-			$this->errmsg="Forbidden";
-			$this->errverbose="The date given in the header is too old.";
+			$this->errmsg="The date given in the header is too old. ".(strtotime("now")-strtotime($this->getDateTime()));
 			return False;			
 		}else{
 			return true;
@@ -121,7 +122,6 @@ class apiServer{
 		echo "host = ".$this->getHost()." <br>\n";
 		echo "errno = ".$this->errno." <br>\n";
 		echo "errmsg = ".$this->errmsg." <br>\n";
-		echo "errverbose = ".$this->errverbose." <br>\n";
 		echo "<pre>";
 		print_r($this->headerHttp);
 		echo "</pre>";

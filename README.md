@@ -32,7 +32,6 @@ When an application exceeds the rate limit for a given API endpoint, the API wil
 ## Example
 See /test/client.php and /test/server.php
 
-
 ##Licence
 Copyright (c) 2014 - Arnaud Jeulin. See the LICENCE.md file.
 

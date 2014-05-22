@@ -1,7 +1,9 @@
 <?php
 
 class apiServer{
-	const REQUESTLIFETIME = 180; //The request mustn't be more than REQUESTLIFETIME seconds old
+	const REQUESTLIFETIME = 180; 	//The request mustn't be more than REQUESTLIFETIME seconds old
+	const RATELIMIT = 5;			// Rate limit
+	const RATELIMITWINDOW = 10; 	// Rate limit window in seconds
 	public $errno;
 	public $errmsg;
 	
@@ -10,31 +12,74 @@ class apiServer{
 	private $headerHttp;
 	private $rawData;
 	private $privateKey;
-	
+	private $httpCodes = array(
+			'200' => 'OK',
+			'201' => 'Created',
+			'202' => 'Accepted',
+			'204' => 'No Content',
+			'301' => 'Moved Permanently',
+			'302' => 'Found',
+			'304' => 'Not Modified',
+			'400' => 'Bad Request',
+			'401' => 'Unauthorized',
+			'403' => 'Forbidden',
+			'404' => 'Not Found',
+			'405' => 'Method Not Allowed',
+			'406' => 'Not Acceptable',
+			'409' => 'Conflict',
+			'410' => 'Gone',
+			'429' => 'Too Many Request',
+			'500' => 'Internal Server Error',
+			'501' => 'Not Implemented',
+			'503' => 'Service Unavailable'
+		);	
+		
 	function __construct() 
 	{	
 		$this->method=$this->getMethod();
 		$this->uri=$_SERVER['REQUEST_URI'];
 		$this->headerHttp=array_change_key_case(getallheaders(),CASE_LOWER);
 		$this->rawData=@file_get_contents('php://input');
+
 	}
 
-	function setPrivateKey($pKey) 
+	function handle($pKey) 
 	{	
 		$this->privateKey=$pKey;
+		
+		$memcache = new Memcached;
+		$memcache->add("RATEUSED".$pKey,0,$this->getNextResetTime());
+		$memcache->increment("RATEUSED".$pKey,1);
+		return $this->isValid();
 	}
+
+	function handleError($code,$msg) 
+	{	
+		$this->privateKey=$pKey;
+		return $this->isValid();
+	}
+		
 		
 	function isValid()
 	{
+		$memcache = new Memcached;
+		$rateUsed = $memcache->get("RATEUSED".$this->privateKey);
+		// check the validity of the request
 		if ($this->getSignature() != $this->buildSignature()){
 			$this->errno="401";
-			$this->errmsg="signature doesn't match";
-			return False;
+			$this->errmsg="The signature doesn't match";
+			return false;
+		}elseif (!$rateUsed || $rateUsed > apiServer::RATELIMIT) {
+			$this->errno="429";
+			$this->errmsg="Too Many request. ";
+			return false;			
 		}elseif(strtotime("now")-strtotime($this->getDateTime()) > apiserver::REQUESTLIFETIME ){
 			$this->errno="403";
-			$this->errmsg="The date given in the header is too old. ".(strtotime("now")-strtotime($this->getDateTime()));
-			return False;			
+			$this->errmsg="The date given in the header is too old. ";
+			return false;
 		}else{
+			$this->errno="0";
+			$this->errmsg="";
 			return true;
 		}
 	}
@@ -89,8 +134,8 @@ class apiServer{
 	
 	function getDateTime()
 	{
-		if (isset($this->headerHttp['x-date'])){
-			return $this->headerHttp['x-date'];
+		if (isset($this->headerHttp['date'])){
+			return $this->headerHttp['date'];
 		}else{
 			return "nope";
 		}		
@@ -106,25 +151,23 @@ class apiServer{
 		}		
 	}
 	
-	function response() {
+	function getNextResetTime()
+	{
+		return ((int) (time() / apiServer::RATELIMITWINDOW) + 1 ) * apiServer::RATELIMITWINDOW;
 	}
 	
-	function echoAll(){
-		echo "privateKey = ".$this->privateKey." <br>\n";
-		echo "publicKey = ".$this->getPublicKey()." <br>\n";
-		echo "signature = ".$this->getSignature()." <br>\n";
-		echo "signatureBuilt = ".$this->buildSignature()." <br>\n";
-		echo "dateTime = ".$this->getDateTime()." <br>\n";
-		echo "valid = ".($this->isValid() ?"true":"false")." <br>\n";
-		echo "method = ".$this->getMethod()." <br>\n";
-		echo "uri = ".$this->getUri()." <br>\n";
-		echo "rawData = ".$this->getRawData()." <br>\n";
-		echo "host = ".$this->getHost()." <br>\n";
-		echo "errno = ".$this->errno." <br>\n";
-		echo "errmsg = ".$this->errmsg." <br>\n";
-		echo "<pre>";
-		print_r($this->headerHttp);
-		echo "</pre>";
+	function response($httpCode, $content="") {
+		$memcache = new Memcached;
+		$rateUsed = $memcache->get("RATEUSED".$this->privateKey);
+
+		$date=gmdate("D, j M Y H:i:s \G\M\T");
+		header("HTTP/1.1 $httpCode ".$this->httpCodes[$httpCode]);
+		header("Date: $date");
+		header("Content-Type: application/json");
+		header("X-Rate-Limit-Limit: ".apiServer::RATELIMIT);
+		header("X-Rate-Limit-Remaining: ".max (0,(apiServer::RATELIMIT - $rateUsed)));
+		header("X-Rate-Limit-Reset: ".$this->getNextResetTime());
+		echo $content;
 	}
 	
 }

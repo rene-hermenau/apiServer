@@ -7,7 +7,7 @@
 
 <body>
 <?php
-$date=gmdate("r");
+$date=gmdate("D, j M Y H:i:s \G\M\T");
 $privateKey="PRIVATEKEY";
 $publickKey="PUBLICKEY";
 $host=$_SERVER['HTTP_HOST'];
@@ -22,21 +22,22 @@ $signature.="&public=".urlencode($publickKey);
 $signature.="&uri=".urlencode($uri);
 $signature=base64_encode(hash_hmac('sha256',$signature,$privateKey));
 
-
 $link="http://$host$uri";
 $opts = array(
   'http'=>array(
 	'method'=>$method,
 	'header'=>"Authorization: signature $signature\r\n" .
 			  "x-public: $publickKey\r\n" .
-			  "x-date: $date\r\n" .	  
+			  "date: $date\r\n" .	  
 			  "content-type: application/json\r\n" .
 			  "X-HTTP-Method-Override: $method\r\n"
   )
 );
 $context = stream_context_create($opts);
-$response=file_get_contents($link,false,$context);
-
+$response=@file_get_contents($link,false,$context);
+echo "<pre>";
+print_r($http_response_header);
+echo "</pre>";
 echo $response;
 ?>
 </body>

@@ -71,11 +71,11 @@ class apiServer{
 			return false;
 		}elseif (!$rateUsed || $rateUsed > apiServer::RATELIMIT) {
 			$this->errno="429";
-			$this->errmsg="Too Many request. ";
+			$this->errmsg="Too Many request.";
 			return false;			
-		}elseif(strtotime("now")-strtotime($this->getDateTime()) > apiserver::REQUESTLIFETIME ){
+		}elseif(abs(strtotime("now")-strtotime($this->getDateTime())) > apiserver::REQUESTLIFETIME ){
 			$this->errno="403";
-			$this->errmsg="The date given in the header is too old. ";
+			$this->errmsg="The date given in the header is in the past or the future. Check your clock.";
 			return false;
 		}else{
 			$this->errno="0";

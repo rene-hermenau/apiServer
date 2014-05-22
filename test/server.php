@@ -8,7 +8,10 @@ include(dirname (dirname(__FILE__))."/class_lib.php");
 	$privateKey="PRIVATEKEY";
 	if ($server->handle($privateKey)) {
 		//the request can be processed
-		$server->response(200,"OK");
+		
+		$responseCode=array(200,201,202,304);
+		$ind=array_rand($responseCode);
+		$server->response($responseCode[$ind],"OK");
 	}else{
 		//Error
 		$server->response($server->errno);

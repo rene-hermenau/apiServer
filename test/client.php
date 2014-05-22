@@ -7,7 +7,7 @@
 
 <body>
 <?php
-$date=gmdate("D, j M Y H:i:s \G\M\T");
+$date=gmdate("D, j M Y H:i:s \G\M\T", strtotime("now"));
 $privateKey="PRIVATEKEY";
 $publickKey="PUBLICKEY";
 $host=$_SERVER['HTTP_HOST'];

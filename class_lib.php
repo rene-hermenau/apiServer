@@ -111,7 +111,7 @@ class apiServer{
 	
 	function getRawData()
 	{ 
-		return @file_get_contents('php://input'); 
+		return $this->rawData; 
 	}
 	
 	function getHost()

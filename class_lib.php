@@ -48,7 +48,7 @@ class apiServer{
 		$this->privateKey=$pKey;
 		
 		$memcache = new Memcached;
-		$memcache->add("RATEUSED".$pKey,0,$this->getNextResetTime()-strtotime("now"));
+		$memcache->add("RATEUSED".$pKey , 0 , NULL , $this->getNextResetTime()-strtotime("now"));
 		$memcache->increment("RATEUSED".$pKey,1);
 		return $this->isValid();
 	}

@@ -12,6 +12,7 @@ class apiServer{
 	private $headerHttp;
 	private $rawData;
 	private $privateKey;
+	private $userKey;
 	private $httpCodes = array(
 			'200' => 'OK',
 			'201' => 'Created',
@@ -43,13 +44,13 @@ class apiServer{
 
 	}
 
-	function handle($pKey) 
+	function handle($pKey, $userKey) 
 	{	
 		$this->privateKey=$pKey;
-		
+		$this->userKey=$userKey;
 		$memcache = new Memcached;
-		$memcache->add("RATEUSED".$pKey , 0 , NULL , $this->getNextResetTime()-strtotime("now"));
-		$memcache->increment("RATEUSED".$pKey,1);
+		$memcache->add($this->memcacheKey() , 0 , NULL , $this->getNextResetTime());
+		$memcache->increment($this->memcacheKey(),1);
 		return $this->isValid();
 	}
 
@@ -63,7 +64,7 @@ class apiServer{
 	function isValid()
 	{
 		$memcache = new Memcached;
-		$rateUsed = $memcache->get("RATEUSED".$this->privateKey);
+		$rateUsed = $memcache->get($this->memcacheKey());
 		// check the validity of the request
 		if ($this->getSignature() != $this->buildSignature()){
 			$this->errno="401";
@@ -158,7 +159,7 @@ class apiServer{
 	
 	function response($httpCode, $content="") {
 		$memcache = new Memcached;
-		$rateUsed = $memcache->get("RATEUSED".$this->privateKey);
+		$rateUsed = $memcache->get($this->memcacheKey());
 
 		$date=gmdate("D, j M Y H:i:s \G\M\T");
 		header("HTTP/1.1 $httpCode ".$this->httpCodes[$httpCode]);
@@ -168,6 +169,11 @@ class apiServer{
 		header("X-Rate-Limit-Remaining: ".max (0,(apiServer::RATELIMIT - $rateUsed)));
 		header("X-Rate-Limit-Reset: ".$this->getNextResetTime());
 		echo $content;
+	}
+	
+	private function memcacheKey()
+	{
+		return "RATEUSED/".$this->privateKey."/".$this->userKey;
 	}
 	
 }

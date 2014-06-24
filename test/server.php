@@ -6,7 +6,7 @@ include(dirname (dirname(__FILE__))."/class_lib.php");
 	// here the code to retrieve PRIVATEKEY
 	//
 	$privateKey="PRIVATEKEY";
-	if ($server->handle($privateKey)) {
+	if ($server->handle($privateKey,123)) {
 		//the request can be processed
 		
 		$responseCode=array(200,201,202,304);
